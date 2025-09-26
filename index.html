@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waterfall Builder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <header class="main-header">
+            <h1>Waterfall Builder</h1>
+            <p>ГДЕ СЫРЫМ???</p>
+        </header>
+
+        <main class="main-content">
+            <div class="left-panel">
+                <section class="card">
+                    <div class="card-header">
+                        <h2>Input Rows</h2>
+                        <div class="header-controls">
+                            <span id="row-counter" class="row-counter">1 row</span>
+                            <button id="add-row-btn" class="btn btn--secondary btn--icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /></svg>
+                                Add Row
+                            </button>
+                        </div>
+                    </div>
+                    <div id="rows-container" class="card-body">
+                    </div>
+                </section>
+
+                <section class="card">
+                    <div id="waterfall-output">
+                        <p class="placeholder-text">Your generated waterfall will appear here.</p>
+                    </div>
+                </section>
+            </div>
+
+            <div class="right-panel">
+                <section class="card">
+                    <div class="card-header">
+                        <h2>USD to RUB Rate</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="rate-input-group">
+                            <input type="number" id="usd-rate" class="input-field" placeholder="e.g., 95.50">
+                            <button id="refresh-rate-btn" class="btn btn--icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="rate-error" class="error-message"></p>
+                        <p id="rate-status" class="status-message"></p>
+                    </div>
+                </section>
+                <div class="action-buttons">
+                    <button id="build-waterfall-btn" class="btn btn--primary">Build Waterfall</button>
+                    <button id="export-csv-btn" class="btn btn--secondary">Export CSV</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+
+<div id="export-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h3>Reminder</h3>
+        <p>Add ad networks Buzzoola, MoeVideo, Adlook, Between and check their CPMs before inserting them.</p>
+        <div class="modal-actions">
+            <button id="modal-cancel-btn" class="btn btn--secondary">Cancel</button>
+            <button id="modal-download-btn" class="btn btn--primary">Download CSV</button>
+        </div>
+        <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
