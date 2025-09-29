@@ -169,7 +169,7 @@ const handleCsvUpload = (event) => {
                 }
 
                 const fillRateRaw = row['Fill Rate'] || '0';
-                const cpmVRaw = row['CPM(v)'] || '0';
+                const cpmVRaw = row['CPM(v) Ad system'] || '0';
                 
                 const parts = lowerCaseAdUnitName.split('_');
                 let cpm = '';
