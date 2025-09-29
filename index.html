@@ -12,16 +12,35 @@
     <div class="container">
         <header class="main-header">
             <h1>Waterfall Builder</h1>
-            <p>ГДЕ СЫРЫМ???</p>
+            <p>R.I.P Книжники 💔🪦</p>
         </header>
 
         <main class="main-content">
             <div class="left-panel">
-                <section class="card">
+                <section id="input-choice" class="card">
+                    <div class="card-header">
+                        <h2>Start by adding your data</h2>
+                    </div>
+                    <div class="card-body choice-body">
+                         <p>Choose how you want to input your ad unit data.</p>
+                         <div class="choice-buttons">
+                            <label for="csv-upload-input" class="btn btn--primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                </svg>
+                                Upload CSV
+                            </label>
+                            <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
+                            <button id="manual-add-btn" class="btn btn--secondary">Add Rows Manually</button>
+                         </div>
+                    </div>
+                </section>
+
+                <section id="manual-input-section" class="card hidden">
                     <div class="card-header">
                         <h2>Input Rows</h2>
                         <div class="header-controls">
-                            <span id="row-counter" class="row-counter">1 row</span>
+                            <span id="row-counter" class="row-counter">0 rows</span>
                             <button id="add-row-btn" class="btn btn--secondary btn--icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /></svg>
                                 Add Row
@@ -33,7 +52,7 @@
                 </section>
 
                 <section class="card">
-                    <div id="waterfall-output">
+                     <div id="waterfall-output">
                         <p class="placeholder-text">Your generated waterfall will appear here.</p>
                     </div>
                 </section>
@@ -49,11 +68,11 @@
                             <input type="number" id="usd-rate" class="input-field" placeholder="e.g., 95.50">
                             <button id="refresh-rate-btn" class="btn btn--icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                  <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                                 </svg>
                             </button>
                         </div>
-                        <p id="rate-error" class="error-message"></p>
+                         <p id="rate-error" class="error-message"></p>
                         <p id="rate-status" class="status-message"></p>
                     </div>
                 </section>
@@ -65,20 +84,27 @@
         </main>
     </div>
 
-
-
-<div id="export-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <h3>Reminder</h3>
-        <p>Add ad networks Buzzoola, MoeVideo, Adlook, Between and check their CPMs before inserting them.</p>
-        <div class="modal-actions">
-            <button id="modal-cancel-btn" class="btn btn--secondary">Cancel</button>
-            <button id="modal-download-btn" class="btn btn--primary">Download CSV</button>
+    <div id="export-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Reminder</h3>
+            <p>Add ad networks Buzzoola, MoeVideo, Adlook, Between and check their CPMs before inserting them.</p>
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="btn btn--secondary">Cancel</button>
+                <button id="modal-download-btn" class="btn btn--primary">Download CSV</button>
+            </div>
+            <button id="modal-close-btn" class="modal-close-btn">&times;</button>
         </div>
-        <button id="modal-close-btn" class="modal-close-btn">&times;</button>
     </div>
-</div>
 
-<script src="app.js"></script>
+    <div id="toast-notification" class="toast">
+    </div>
+
+    <div id="image-popup" class="image-popup">
+        <img src="" alt="Success">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
+
