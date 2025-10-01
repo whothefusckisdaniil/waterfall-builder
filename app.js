@@ -246,7 +246,8 @@ const generateFullWaterfall = (initialRows, rate) => {
     const autoRows = initialRows.filter(r => r.auto);
     const manualRows = initialRows.filter(r => !r.auto);
     let baseYdRows = [...manualRows.map(r => ({ ...r,
-        network: 'YD'
+        network: 'YD',
+        isNew: false
     }))];
     const fillRateThresholds = [];
     const processingQueue = [...baseYdRows];
@@ -268,7 +269,8 @@ const generateFullWaterfall = (initialRows, rate) => {
                     cpmRub: newCpm,
                     cpmUsd: newCpm / rate,
                     fill: null,
-                    auto: false
+                    auto: false,
+                    isNew: true
                 });
                 processedCpms.add(newCpmStr);
             }
@@ -281,7 +283,8 @@ const generateFullWaterfall = (initialRows, rate) => {
                     cpmRub: newCpm,
                     cpmUsd: newCpm / rate,
                     fill: row.fill,
-                    auto: false
+                    auto: false,
+                    isNew: true
                 };
                 fillRateThresholds.push(newThreshold);
                 processedCpms.add(newCpmStr);
@@ -296,6 +299,7 @@ const generateFullWaterfall = (initialRows, rate) => {
         cpmRub: (ydRow.cpmRub / 100) * rate,
         fill: ydRow.id ? ydRow.fill : null,
         auto: false,
+        isNew: ydRow.isNew
     }));
     let mainWaterfall = [...allYdRows, ...mtRows].sort((a, b) => b.cpmRub - a.cpmRub);
     const uniqueWaterfall = mainWaterfall.filter((item, index, self) => index === self.findIndex((t) => (t.network === item.network && t.cpmRub.toFixed(4) === item.cpmRub.toFixed(4)))).map(row => (row.network === 'YD' && !row.id) ? { ...row,
@@ -347,7 +351,12 @@ const renderTable = (waterfall) => {
             networkDisplay = `<span class="network-m">M</span><span class="network-t">T</span>`;
         }
         const cpmRubDisplay = row.auto ? 'auto' : row.cpmRub.toFixed(2);
-        const cpmUsdDisplay = row.auto ? 'auto' : `$${row.cpmUsd.toFixed(2)}`;
+        let cpmUsdDisplay;
+        if (row.network === 'YD') {
+            cpmUsdDisplay = '—';
+        } else {
+            cpmUsdDisplay = row.auto ? 'auto' : `$${row.cpmUsd.toFixed(2)}`;
+        }
         tr.innerHTML = `
             <td class="network-cell">${networkDisplay}</td>
             <td>${cpmRubDisplay}</td>
@@ -360,10 +369,19 @@ const renderTable = (waterfall) => {
 };
 
 const downloadCSV = (data) => {
-    const headers = ['Ad Network', 'CPM (rubles)', 'CPM (usd)'];
+    const headers = ['Ad Network', 'CPM (rubles)', 'CPM (usd)', 'Status'];
     const csvRows = [headers.join(',')];
     data.forEach(row => {
-        const values = [row.network, row.cpmRub.toFixed(2), row.cpmUsd.toFixed(2)];
+        const status = row.isNew ? 'new' : '';
+        const cpmRubValue = row.auto ? '' : row.cpmRub.toFixed(2);
+        const cpmUsdValue = (row.network === 'YD' || row.auto) ? '' : row.cpmUsd.toFixed(2);
+
+        const values = [
+            row.network,
+            cpmRubValue,
+            cpmUsdValue,
+            status
+        ];
         csvRows.push(values.join(','));
     });
     const csvString = csvRows.join('\n');
@@ -380,16 +398,23 @@ const downloadCSV = (data) => {
     document.body.removeChild(link);
 };
 
+
 const showModal = () => {
-    exportModal.classList.remove('hidden');
-    exportModal.style.opacity = '1';
-    exportModal.querySelector('.modal-content').style.transform = 'scale(1)';
+    const modal = document.getElementById('export-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.style.opacity = '1';
+        modal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }, 10);
 };
 
 const hideModal = () => {
-    exportModal.style.opacity = '0';
-    exportModal.querySelector('.modal-content').style.transform = 'scale(0.95)';
-    setTimeout(() => exportModal.classList.add('hidden'), 300);
+    const modal = document.getElementById('export-modal');
+    modal.style.opacity = '0';
+    modal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
 };
 
 manualAddBtn.addEventListener('click', showManualInputView);
