@@ -15,14 +15,41 @@ const rateErrorEl = document.getElementById('rate-error');
 const toastNotification = document.getElementById('toast-notification');
 const imagePopup = document.getElementById('image-popup');
 const exportModal = document.getElementById('export-modal');
-const modalCloseBtn = document.getElementById('modal-close-btn');
+const modalCloseBtn = document.getElementById('export-modal-close-btn');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
 const modalDownloadBtn = document.getElementById('modal-download-btn');
+const helpBtn = document.getElementById('help-btn');
+const helpModal = document.getElementById('help-modal');
+const helpModalCloseBtn = document.getElementById('help-modal-close-btn');
+const helpModalOkBtn = document.getElementById('help-modal-ok-btn');
 
 let rowIdCounter = 0;
 let currentWaterfall = [];
 let toastTimeout;
 let imageTimeout;
+
+const thirdPartyNetworks = [
+    'AdLook', 'Kinostream', 'MoeVideo', 'DaoAd', 'AdPlay', 
+    'Adiam', 'VideoHead', 'BetweenDigital', 'Buzzoola', 
+    'MediaSniper', 'BidVol', 'Ne Media', 'Traffaret', 'Otclick'
+];
+
+const networkInstructions = {
+    'AdLook': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1SKqQKxWwynNrZxdqJfecURWYv8_mFSaVtMC-FIYCeWs/edit?gid=0#gid=0 и не забудь оповестить в чате',
+    'Kinostream': 'https://a.suprion.ru/vast/625281/vpaid',
+    'MoeVideo': 'вставить площадку в таблицу https://ad.moe.video/vast?pid=11425&vpt=sticky&advertCount=1&vt=vpaid&vl=0 и не забудь оповестить в чате',
+    'DaoAd': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/12QCCJQ2ETPxMwqMKh_6SnT3wqm9WIQz95Dpqwbo36Z0/edit?gid=1321294382#gid=1321294382 и не забудь оповестить в чате',
+    'AdPlay': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1Xesc72asLfTi1L52FSNrIKsOhG5foU1MQogtwS1Tbm8/edit?gid=0#gid=0 и не забудь оповестить в чате',
+    'Adiam': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1Q6fFizKDr3Q0EzsxcPGbwzr7L4R2Zl8v4F5KHGjNQxI/edit?gid=0#gid=0 и не забудь оповестить в чате',
+    'VideoHead': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1H_StW94zP0XnFraR1qfTs2aPtDFO0sEKVfFho9C9PPo/edit?gid=0#gid=0 и не забудь оповестить в чате',
+    'BetweenDigital': 'Создать в кабинете https://cp.betweendigital.com/users/43559/sites',
+    'Buzzoola': 'Создаем в кабинете https://pub.buzzoola.com/en/sites',
+    'MediaSniper': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1TEq4sx_5f_eVsMNKbINw9dsjVelcNjNNqJ8T2g3qZcY/edit?gid=1821556884#gid=1821556884 и не забудь оповестить в чате',
+    'BidVol': 'Создаем в кабинете https://ad.bidvol.com/statistics',
+    'Ne Media': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1KA0seRVZaOdgWt1lK4FBwdosZY-pf0sAP9cCxGfaywg/edit?gid=0#gid=0 и не забудь оповестить в чате, с личного кабинета получаем васт',
+    'Traffaret': 'Запрашиваем в тг',
+    'Otclick': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1fMhbQkAXziaEYHbrGSyNBM9oVyDr0aTmv9_mxLuHdqM/edit?gid=1393807201#gid=1393807201 и не забудь оповестить в чате'
+};
 
 const successImages = [
     'success-image-1.png',
@@ -80,19 +107,34 @@ const updateRowCount = () => {
     rowCounterEl.textContent = `${count} ${count === 1 ? 'row' : 'rows'}`;
 };
 
-const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'RUB') => {
+const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', networkName = 'MyTarget') => {
     rowIdCounter++;
     const rowId = `row-${rowIdCounter}`;
     const rowElement = document.createElement('div');
     rowElement.id = rowId;
     rowElement.className = 'form-row';
+    
+    rowElement.dataset.network = networkName;
+
+    const networkLabel = networkName === 'MyTarget' ? 'MT' : networkName;
+
+    let networkOptions = `
+        <option value="MyTarget" ${networkName === 'MyTarget' ? 'selected' : ''}>MyTarget</option>
+        <option value="Yandex" ${networkName === 'Yandex' ? 'selected' : ''}>Yandex</option>
+    `;
+    thirdPartyNetworks.forEach(net => {
+        networkOptions += `<option value="${net}" ${networkName === net ? 'selected' : ''}>${net}</option>`;
+    });
+
     rowElement.innerHTML = `
         <div class="form-group cpm-group">
-            <label for="cpm-${rowId}">CPM</label>
-            <input type="number" name="cpm" id="cpm-${rowId}" class="input-field" placeholder="50" value="${cpm}">
-            <select name="currency" class="select-field">
-                <option value="RUB">RUB</option>
-                <option value="USD">USD</option>
+            <select name="network" class="select-field" style="flex: 2;">
+                ${networkOptions}
+            </select>
+            <input type="number" name="cpm" id="cpm-${rowId}" class="input-field" placeholder="CPM" value="${cpm}" style="flex: 1;">
+            <select name="currency" class="select-field" style="width: 80px; flex: 0 0 auto;">
+                <option value="USD" ${currency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="RUB" ${currency === 'RUB' ? 'selected' : ''}>RUB</option>
             </select>
         </div>
         <div class="form-group fill-rate-group" style="${isAuto ? 'visibility: hidden;' : ''}">
@@ -133,35 +175,62 @@ const handleCsvUpload = (event) => {
     if (!file) return;
     Papa.parse(file, {
         header: true,
+        delimiter: ";", 
         skipEmptyLines: true,
         complete: (results) => {
             rowsContainer.innerHTML = '';
             results.data.forEach(row => {
+                const adSystemRaw = row['Ad system'] || '';
+                let adSystem = adSystemRaw.trim();
+
+                if (adSystem === 'YD') adSystem = 'Yandex';
+
+                const isMyTarget = adSystem === 'MyTarget';
+                const isYandex = adSystem === 'Yandex';
+                const isThirdParty = thirdPartyNetworks.includes(adSystem);
+
+                if (!isMyTarget && !isThirdParty && !isYandex) return;
+
                 const adUnitName = row['Ad Unit Name'] || '';
                 const lowerCaseAdUnitName = adUnitName.toLowerCase();
                 const sizePattern = /\d+x\d+/;
-                if (lowerCaseAdUnitName.includes('_pvw_hb_b_b_1') || lowerCaseAdUnitName.includes('_pvw_hb_b_b_2') || lowerCaseAdUnitName.includes('_pvw_hb_waterfall') || lowerCaseAdUnitName.includes('_pvw_hb_b_m_1') || lowerCaseAdUnitName.includes('_pvw_hb_b_m_2') || lowerCaseAdUnitName.includes('_pvw_hb_b_pc_1') || lowerCaseAdUnitName.includes('_pvw_hb_b_pc_2') || sizePattern.test(lowerCaseAdUnitName)) {
+                
+                if (lowerCaseAdUnitName.includes('_pvw_hb_b_b_1') || lowerCaseAdUnitName.includes('_pvw_hb_b_b_2') || lowerCaseAdUnitName.includes('_pvw_hb_waterfall') || lowerCaseAdUnitName.includes('_pvw_hb_b_m_1') || lowerCaseAdUnitName.includes('_pvw_hb_b_m_2') || lowerCaseAdUnitName.includes('_pvw_hb_b_pc_1') || lowerCaseAdUnitName.includes('_pvw_hb_b_pc_2') || (sizePattern.test(lowerCaseAdUnitName) && (isMyTarget || isYandex))) {
                     return;
                 }
+
                 const fillRateRaw = row['Fill Rate'] || '0';
+                const fillRateFixed = fillRateRaw.replace(',', '.');
                 const cpmVRaw = row['CPM(v) Ad system'] || '0';
+                
                 const parts = lowerCaseAdUnitName.split('_');
                 let cpm = '';
                 let isAuto = false;
-                let currency = 'RUB';
-                if (parts.includes('auto')) {
+                let currency = isYandex ? 'RUB' : 'USD';
+
+                if (parts.includes('auto') || lowerCaseAdUnitName.includes('_auto_')) {
                     isAuto = true;
-                    cpm = parseFloat(cpmVRaw).toFixed(4);
-                    currency = 'USD';
+                    cpm = parseFloat(cpmVRaw.replace(',', '.'));
+                    currency = 'USD'; // FORCE USD for all auto rows as requested
                 } else {
                     const cpmPart = parts.find(p => !isNaN(parseInt(p, 10)) && !p.includes('x'));
                     if (cpmPart) {
-                        cpm = parseInt(cpmPart, 10);
+                        if (isMyTarget) {
+                            cpm = parseInt(cpmPart, 10) / 100;
+                        } else {
+                            cpm = parseInt(cpmPart, 10);
+                        }
+                    } else {
+                        cpm = parseFloat(cpmVRaw.replace(',', '.'));
                     }
                 }
-                const fillRate = parseFloat(fillRateRaw).toFixed(2);
-                if (cpm || isAuto) {
-                    addRow(cpm, fillRate, isAuto, currency);
+                
+                if (cpm !== '' && !isNaN(cpm)) cpm = cpm.toFixed(2);
+
+                const fillRate = parseFloat(fillRateFixed).toFixed(2);
+                
+                if ((cpm !== '' && !isNaN(cpm)) || isAuto) {
+                    addRow(cpm, fillRate, isAuto, currency, adSystem);
                 }
             });
             showManualInputView();
@@ -213,6 +282,10 @@ const readRows = () => {
     const rowElements = rowsContainer.querySelectorAll('.form-row');
     rowElements.forEach(rowEl => {
         const id = rowEl.id;
+        
+        const networkSelect = rowEl.querySelector('select[name="network"]');
+        const networkName = networkSelect ? networkSelect.value : 'MyTarget';
+
         const cpmInput = rowEl.querySelector('input[name="cpm"]');
         const currencySelect = rowEl.querySelector('select[name="currency"]');
         const fillRateInput = rowEl.querySelector('input[name="fill-rate"]');
@@ -222,101 +295,196 @@ const readRows = () => {
         const isAuto = autoCheckbox.checked;
         const fill = isAuto ? null : (parseFloat(fillRateInput.value) || null);
         let cpmRub, cpmUsd;
+        
         if (currency === 'RUB') {
             cpmRub = cpmValue;
             cpmUsd = cpmValue / rate;
-        } else {
+        } else { 
             cpmUsd = cpmValue;
             cpmRub = cpmValue * rate;
         }
+        
         rows.push({
             id: id,
+            network: networkName,
             cpmValue: cpmValue,
             currency: currency,
             cpmRub: cpmRub,
             cpmUsd: cpmUsd,
             fill: fill,
-            auto: isAuto
+            auto: isAuto,
+            isPlaceholder: false 
         });
     });
     return rows;
 };
 
 const generateFullWaterfall = (initialRows, rate) => {
-    const autoRows = initialRows.filter(r => r.auto);
-    const manualRows = initialRows.filter(r => !r.auto);
-    let baseYdRows = [...manualRows.map(r => ({ ...r,
-        network: 'YD',
-        isNew: false
-    }))];
-    const fillRateThresholds = [];
-    const processingQueue = [...baseYdRows];
-    const processedCpms = new Set(baseYdRows.map(r => r.cpmRub.toFixed(2)));
-    while (processingQueue.length > 0) {
-        const row = processingQueue.shift();
-        if (row.fill === null) continue;
-        if (row.cpmRub >= 150) {
-            let numThresholds = 0;
-            if (row.fill > 9) numThresholds = Math.floor(row.fill / 2);
-            else if (row.fill > 1.5) numThresholds = Math.floor(row.fill / 1.5);
-            else if (row.fill >= 0.5) numThresholds = Math.floor(row.fill / 0.5);
-            for (let i = 1; i <= numThresholds; i++) {
-                const newCpm = row.cpmRub + (25 * i);
-                const newCpmStr = newCpm.toFixed(2);
-                if (processedCpms.has(newCpmStr)) continue;
-                fillRateThresholds.push({
-                    network: 'YD',
-                    cpmRub: newCpm,
-                    cpmUsd: newCpm / rate,
-                    fill: null,
-                    auto: false,
-                    isNew: true
-                });
-                processedCpms.add(newCpmStr);
-            }
-        } else if (row.cpmRub >= 50 && row.fill > (row.cpmRub >= 100 ? 2 : 5)) {
-            const newCpm = row.cpmRub + 10;
-            const newCpmStr = newCpm.toFixed(2);
-            if (!processedCpms.has(newCpmStr) && newCpm < 150) {
-                const newThreshold = {
-                    network: 'YD',
-                    cpmRub: newCpm,
-                    cpmUsd: newCpm / rate,
-                    fill: row.fill,
-                    auto: false,
-                    isNew: true
-                };
-                fillRateThresholds.push(newThreshold);
-                processedCpms.add(newCpmStr);
-                processingQueue.push(newThreshold);
+    const mtRows = initialRows.filter(r => r.network === 'MyTarget' && !r.auto);
+    const mtAutoRows = initialRows.filter(r => r.network === 'MyTarget' && r.auto);
+    const ydRows = initialRows.filter(r => r.network === 'Yandex' && !r.auto);
+    const ydAutoRows = initialRows.filter(r => r.network === 'Yandex' && r.auto);
+    
+    const existingNetworks = new Set(initialRows.map(r => r.network).filter(n => n !== 'MyTarget' && n !== 'Yandex'));
+    const thirdPartyRows = initialRows.filter(r => r.network !== 'MyTarget' && r.network !== 'Yandex');
+
+    const generatedThirdParty = [];
+
+    const addPlaceholderNetwork = (name, rubThreshold) => {
+        if (!existingNetworks.has(name)) {
+            const cpmUsdVirtual = (rubThreshold / rate) - 0.0001; 
+            
+            generatedThirdParty.push({
+                network: name,
+                cpmUsd: cpmUsdVirtual, 
+                cpmRub: rubThreshold, 
+                fill: null,
+                auto: false,
+                isNew: true,
+                isPlaceholder: true 
+            });
+        }
+    };
+
+    addPlaceholderNetwork('AdLook', 80.00);
+    addPlaceholderNetwork('Kinostream', 79.99); 
+    addPlaceholderNetwork('MoeVideo', 79.98);
+    addPlaceholderNetwork('DaoAd', 79.97);
+    addPlaceholderNetwork('AdPlay', 79.96);
+
+    addPlaceholderNetwork('Adiam', 60.00);
+    addPlaceholderNetwork('VideoHead', 59.99);
+    addPlaceholderNetwork('BetweenDigital', 59.98);
+
+    addPlaceholderNetwork('Buzzoola', 50.00);
+    addPlaceholderNetwork('MediaSniper', 49.99);
+    addPlaceholderNetwork('BidVol', 49.98);
+
+    addPlaceholderNetwork('Ne Media', 40.00);
+    addPlaceholderNetwork('Traffaret', 39.99);
+    addPlaceholderNetwork('Otclick', 39.98);
+
+    const generateNetworkThresholds = (rows, isRub, networkName) => {
+        const generated = [];
+        const processedCpms = new Set(rows.map(r => isRub ? r.cpmRub.toFixed(2) : r.cpmUsd.toFixed(2)));
+        const queue = [...rows];
+        
+        const highLimit = isRub ? 150 : 1.50;
+        const midLimit = isRub ? 50 : 0.50;
+        const midCap = isRub ? 150 : 1.50;
+        const highStep = isRub ? 25 : 0.25;
+        const midStep = isRub ? 10 : 0.10;
+
+        while(queue.length > 0) {
+            const row = queue.shift();
+            if (row.fill === null) continue;
+
+            const val = isRub ? row.cpmRub : row.cpmUsd;
+
+            if (val >= highLimit) {
+                let numThresholds = 0;
+                if (row.fill > 9) numThresholds = Math.floor(row.fill / 2);
+                else if (row.fill > 1.5) numThresholds = Math.floor(row.fill / 1.5);
+                else if (row.fill >= 0.5) numThresholds = Math.floor(row.fill / 0.5);
+                
+                for (let i = 1; i <= numThresholds; i++) {
+                    const newCpm = val + (highStep * i);
+                    const newCpmStr = newCpm.toFixed(2);
+                    if (processedCpms.has(newCpmStr)) continue;
+                    
+                    const newRow = {
+                        network: networkName,
+                        cpmUsd: isRub ? newCpm / rate : newCpm,
+                        cpmRub: isRub ? newCpm : newCpm * rate,
+                        fill: null,
+                        auto: false,
+                        isNew: true
+                    };
+                    generated.push(newRow);
+                    processedCpms.add(newCpmStr);
+                }
+            } else if (val >= midLimit) {
+                const requiredFill = (val >= (isRub ? 100 : 1.00)) ? 2 : 5;
+                if (row.fill > requiredFill) {
+                    const numThresholds = Math.floor(row.fill / requiredFill);
+                    for (let i = 1; i <= numThresholds; i++) {
+                        const newCpm = val + (midStep * i);
+                        if (newCpm >= midCap) break;
+
+                        const newCpmStr = newCpm.toFixed(2);
+                        if (processedCpms.has(newCpmStr)) continue;
+                        
+                        const newRow = {
+                            network: networkName,
+                            cpmUsd: isRub ? newCpm / rate : newCpm,
+                            cpmRub: isRub ? newCpm : newCpm * rate,
+                            fill: null,
+                            auto: false,
+                            isNew: true
+                        };
+                        generated.push(newRow);
+                        processedCpms.add(newCpmStr);
+                        queue.push(newRow);
+                    }
+                }
             }
         }
-    }
-    const allYdRows = [...baseYdRows, ...fillRateThresholds];
-    const mtRows = allYdRows.map(ydRow => ({
-        network: 'MT',
-        cpmUsd: ydRow.cpmRub / 100,
-        cpmRub: (ydRow.cpmRub / 100) * rate,
-        fill: ydRow.id ? ydRow.fill : null,
-        auto: false,
-        isNew: ydRow.isNew
-    }));
-    let mainWaterfall = [...allYdRows, ...mtRows].sort((a, b) => b.cpmRub - a.cpmRub);
-    const uniqueWaterfall = mainWaterfall.filter((item, index, self) => index === self.findIndex((t) => (t.network === item.network && t.cpmRub.toFixed(4) === item.cpmRub.toFixed(4)))).map(row => (row.network === 'YD' && !row.id) ? { ...row,
-        fill: null
-    } : row);
-    autoRows.forEach(autoRow => {
-        const ydAuto = { ...autoRow,
-            network: 'YD'
-        };
-        const mtAuto = { ...autoRow,
-            network: 'MT',
-            cpmUsd: ydAuto.cpmRub / 100,
-            cpmRub: (ydAuto.cpmRub / 100) * rate,
-        };
-        uniqueWaterfall.push(ydAuto);
-        uniqueWaterfall.push(mtAuto);
+        return generated;
+    };
+
+    const mtThresholds = generateNetworkThresholds(mtRows, false, 'MyTarget');
+    const ydThresholds = generateNetworkThresholds(ydRows, true, 'Yandex');
+
+    const mtAutoThresholds = [];
+    const processedMt = new Set([...mtRows, ...mtThresholds].map(r => r.cpmUsd.toFixed(2)));
+    mtAutoRows.forEach(row => {
+        const autoUsd = row.cpmUsd;
+        const nextMultiple = Math.ceil((autoUsd + 0.0001) / 0.05) * 0.05;
+        const start = Math.max(0.15, nextMultiple);
+        if (start <= 0.50) {
+            for (let cpm = start; cpm <= 0.50001; cpm += 0.05) {
+                const cpmStr = cpm.toFixed(2);
+                if (processedMt.has(cpmStr)) continue;
+                mtAutoThresholds.push({ network: 'MyTarget', cpmUsd: cpm, cpmRub: cpm * rate, fill: null, auto: false, isNew: true });
+                processedMt.add(cpmStr);
+            }
+        }
     });
+
+    const ydAutoThresholds = [];
+    const processedYd = new Set([...ydRows, ...ydThresholds].map(r => r.cpmRub.toFixed(2)));
+    ydAutoRows.forEach(row => {
+        const autoRub = row.cpmRub;
+        const nextMultiple = Math.ceil((autoRub + 0.0001) / 5) * 5;
+        const start = Math.max(15, nextMultiple);
+        if (start <= 50) {
+            for (let cpm = start; cpm <= 50; cpm += 5) {
+                const cpmStr = cpm.toFixed(2);
+                if (processedYd.has(cpmStr)) continue;
+                ydAutoThresholds.push({ network: 'Yandex', cpmUsd: cpm / rate, cpmRub: cpm, fill: null, auto: false, isNew: true });
+                processedYd.add(cpmStr);
+            }
+        }
+    });
+
+    let allRows = [
+        ...mtRows, ...mtThresholds, ...mtAutoThresholds,
+        ...ydRows, ...ydThresholds, ...ydAutoThresholds,
+        ...thirdPartyRows, ...generatedThirdParty
+    ];
+
+    allRows.sort((a, b) => b.cpmUsd - a.cpmUsd);
+
+    const uniqueWaterfall = allRows.filter((item, index, self) => 
+        index === self.findIndex((t) => (
+            t.network === item.network && 
+            Math.abs(t.cpmUsd - item.cpmUsd) < 0.001
+        ))
+    );
+    
+    mtAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
+    ydAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
+
     return uniqueWaterfall;
 };
 
@@ -343,20 +511,28 @@ const renderTable = (waterfall) => {
     const tbody = table.querySelector('tbody');
     waterfall.forEach(row => {
         const tr = document.createElement('tr');
-        const fillDisplay = row.fill !== null ? `${row.fill.toFixed(2)}%` : '—';
-        let networkDisplay;
-        if (row.network === 'YD') {
-            networkDisplay = `<span class="network-y">Y</span><span class="network-d">D</span>`;
-        } else {
+        const fillDisplay = row.fill !== null ? `${parseFloat(row.fill).toFixed(2)}%` : '—';
+        
+        let networkDisplay = row.network;
+        if (row.network === 'MyTarget') {
             networkDisplay = `<span class="network-m">M</span><span class="network-t">T</span>`;
+        } else if (row.network === 'Yandex') {
+            networkDisplay = `<span class="network-y">Y</span><span class="network-d">D</span>`;
         }
-        const cpmRubDisplay = row.auto ? 'auto' : row.cpmRub.toFixed(2);
-        let cpmUsdDisplay;
-        if (row.network === 'YD') {
+        
+        let cpmRubDisplay = row.cpmRub.toFixed(2);
+        let cpmUsdDisplay = `$${row.cpmUsd.toFixed(2)}`;
+
+        if (row.isPlaceholder) {
+            cpmRubDisplay = '—';
             cpmUsdDisplay = '—';
-        } else {
-            cpmUsdDisplay = row.auto ? 'auto' : `$${row.cpmUsd.toFixed(2)}`;
+        } else if (row.auto) {
+            cpmRubDisplay = 'auto';
+            cpmUsdDisplay = 'auto';
+        } else if (row.network === 'Yandex') {
+            cpmUsdDisplay = '—';
         }
+
         tr.innerHTML = `
             <td class="network-cell">${networkDisplay}</td>
             <td>${cpmRubDisplay}</td>
@@ -370,20 +546,58 @@ const renderTable = (waterfall) => {
 
 const downloadCSV = (data) => {
     const headers = ['Ad Network', 'CPM (rubles)', 'CPM (usd)', 'Status'];
-    const csvRows = [headers.join(',')];
+    
+    const escapeCsv = (field) => {
+        if (field === null || field === undefined) return '';
+        const stringField = String(field);
+        if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+            return `"${stringField.replace(/"/g, '""')}"`;
+        }
+        return stringField;
+    };
+
+    const csvRows = [headers.map(escapeCsv).join(',')];
+
     data.forEach(row => {
-        const status = row.isNew ? 'new' : '';
-        const cpmRubValue = row.auto ? '' : row.cpmRub.toFixed(2);
-        const cpmUsdValue = (row.network === 'YD' || row.auto) ? '' : row.cpmUsd.toFixed(2);
+        let status = row.isNew ? 'new' : '';
+
+        if (row.isNew && networkInstructions[row.network]) {
+            const originalText = networkInstructions[row.network];
+            const urlMatch = originalText.match(/https?:\/\/[^\s]+/);
+            
+            if (urlMatch) {
+                const url = urlMatch[0];
+                const safeText = originalText.replace(/"/g, '""');
+                status = `=HYPERLINK("${url}"; "${safeText}")`;
+            } else {
+                status = originalText;
+            }
+        }
+        
+        let cpmRubValue = row.cpmRub.toFixed(2);
+        let cpmUsdValue = row.cpmUsd.toFixed(2);
+
+        if (row.isPlaceholder) {
+            cpmRubValue = '-';
+            cpmUsdValue = '-';
+        } else if (row.auto) {
+            cpmRubValue = 'auto';
+            cpmUsdValue = 'auto';
+        } else if (row.network === 'Yandex') {
+            cpmUsdValue = '';
+        }
+
+        const netName = row.network === 'MyTarget' ? 'MT' : (row.network === 'Yandex' ? 'YD' : row.network);
 
         const values = [
-            row.network,
+            netName,
             cpmRubValue,
             cpmUsdValue,
             status
         ];
-        csvRows.push(values.join(','));
+        csvRows.push(values.map(escapeCsv).join(','));
     });
+    
     const csvString = csvRows.join('\n');
     const blob = new Blob([csvString], {
         type: 'text/csv;charset=utf-8;'
@@ -398,24 +612,34 @@ const downloadCSV = (data) => {
     document.body.removeChild(link);
 };
 
-
 const showModal = () => {
-    const modal = document.getElementById('export-modal');
-    modal.classList.remove('hidden');
+    exportModal.classList.remove('hidden');
     setTimeout(() => {
-        modal.style.opacity = '1';
-        modal.querySelector('.modal-content').style.transform = 'scale(1)';
+        exportModal.style.opacity = '1';
+        exportModal.querySelector('.modal-content').style.transform = 'scale(1)';
     }, 10);
 };
 
 const hideModal = () => {
-    const modal = document.getElementById('export-modal');
-    modal.style.opacity = '0';
-    modal.querySelector('.modal-content').style.transform = 'scale(0.95)';
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
+    exportModal.style.opacity = '0';
+    exportModal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+    setTimeout(() => exportModal.classList.add('hidden'), 300);
 };
+
+const showHelpModal = () => {
+    helpModal.classList.remove('hidden');
+    setTimeout(() => {
+        helpModal.style.opacity = '1';
+        helpModal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }, 10);
+};
+
+const hideHelpModal = () => {
+    helpModal.style.opacity = '0';
+    helpModal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+    setTimeout(() => helpModal.classList.add('hidden'), 300);
+};
+
 
 manualAddBtn.addEventListener('click', showManualInputView);
 csvUploadInput.addEventListener('change', handleCsvUpload);
@@ -423,8 +647,8 @@ addRowBtn.addEventListener('click', () => addRow());
 buildWaterfallBtn.addEventListener('click', () => {
     const initialRows = readRows();
     if (!initialRows) return;
-    if (initialRows.length < 3) {
-        showToast("Please fill in at least 3 rows first.", "error");
+    if (initialRows.length < 1) {
+        showToast("Please add at least 1 row.", "error");
         return;
     }
     const rate = parseFloat(usdRateInput.value);
@@ -447,7 +671,10 @@ modalDownloadBtn.addEventListener('click', () => {
     downloadCSV(currentWaterfall);
     hideModal();
 });
+helpBtn.addEventListener('click', showHelpModal);
+helpModalCloseBtn.addEventListener('click', hideHelpModal);
+helpModalOkBtn.addEventListener('click', hideHelpModal);
+
 document.addEventListener('DOMContentLoaded', () => {
     getRate();
 });
-
