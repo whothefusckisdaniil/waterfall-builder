@@ -29,26 +29,18 @@ let toastTimeout;
 let imageTimeout;
 
 const thirdPartyNetworks = [
-    'AdLook', 'Kinostream', 'MoeVideo', 'DaoAd', 'AdPlay', 
-    'Adiam', 'VideoHead', 'BetweenDigital', 'Buzzoola', 
-    'MediaSniper', 'BidVol', 'Ne Media', 'Traffaret', 'Otclick'
+    'AdLook', 'Kinostream', 'MoeVideo', 'AdPlay', 'TDS ortb', 
+    'BetweenDigital', 'Buzzoola', 'Ne Media'
 ];
 
 const networkInstructions = {
     'AdLook': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1SKqQKxWwynNrZxdqJfecURWYv8_mFSaVtMC-FIYCeWs/edit?gid=0#gid=0 и не забудь оповестить в чате',
     'Kinostream': 'https://a.suprion.ru/vast/625281/vpaid',
     'MoeVideo': 'вставить площадку в таблицу https://ad.moe.video/vast?pid=11425&vpt=sticky&advertCount=1&vt=vpaid&vl=0 и не забудь оповестить в чате',
-    'DaoAd': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/12QCCJQ2ETPxMwqMKh_6SnT3wqm9WIQz95Dpqwbo36Z0/edit?gid=1321294382#gid=1321294382 и не забудь оповестить в чате',
     'AdPlay': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1Xesc72asLfTi1L52FSNrIKsOhG5foU1MQogtwS1Tbm8/edit?gid=0#gid=0 и не забудь оповестить в чате',
-    'Adiam': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1Q6fFizKDr3Q0EzsxcPGbwzr7L4R2Zl8v4F5KHGjNQxI/edit?gid=0#gid=0 и не забудь оповестить в чате',
-    'VideoHead': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1H_StW94zP0XnFraR1qfTs2aPtDFO0sEKVfFho9C9PPo/edit?gid=0#gid=0 и не забудь оповестить в чате',
     'BetweenDigital': 'Создать в кабинете https://cp.betweendigital.com/users/43559/sites',
     'Buzzoola': 'Создаем в кабинете https://pub.buzzoola.com/en/sites',
-    'MediaSniper': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1TEq4sx_5f_eVsMNKbINw9dsjVelcNjNNqJ8T2g3qZcY/edit?gid=1821556884#gid=1821556884 и не забудь оповестить в чате',
-    'BidVol': 'Создаем в кабинете https://ad.bidvol.com/statistics',
-    'Ne Media': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1KA0seRVZaOdgWt1lK4FBwdosZY-pf0sAP9cCxGfaywg/edit?gid=0#gid=0 и не забудь оповестить в чате, с личного кабинета получаем васт',
-    'Traffaret': 'Запрашиваем в тг',
-    'Otclick': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1fMhbQkAXziaEYHbrGSyNBM9oVyDr0aTmv9_mxLuHdqM/edit?gid=1393807201#gid=1393807201 и не забудь оповестить в чате'
+    'Ne Media': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1KA0seRVZaOdgWt1lK4FBwdosZY-pf0sAP9cCxGfaywg/edit?gid=0#gid=0 и не забудь оповестить в чате, с личного кабинета получаем васт'
 };
 
 const successImages = [
@@ -116,8 +108,6 @@ const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', netwo
     
     rowElement.dataset.network = networkName;
 
-    const networkLabel = networkName === 'MyTarget' ? 'MT' : networkName;
-
     let networkOptions = `
         <option value="MyTarget" ${networkName === 'MyTarget' ? 'selected' : ''}>MyTarget</option>
         <option value="Yandex" ${networkName === 'Yandex' ? 'selected' : ''}>Yandex</option>
@@ -181,15 +171,24 @@ const handleCsvUpload = (event) => {
             rowsContainer.innerHTML = '';
             results.data.forEach(row => {
                 const adSystemRaw = row['Ad system'] || '';
-                let adSystem = adSystemRaw.trim();
+                const adSystemLower = adSystemRaw.trim().toLowerCase();
 
-                if (adSystem === 'YD') adSystem = 'Yandex';
+                let adSystem = '';
+                
+                if (adSystemLower === 'yd' || adSystemLower === 'yandex' || adSystemLower === 'rtb') adSystem = 'Yandex';
+                else if (adSystemLower === 'mt' || adSystemLower === 'mytarget') adSystem = 'MyTarget';
+                else if (adSystemLower === 'adlook') adSystem = 'AdLook';
+                else if (adSystemLower === 'kinostream') adSystem = 'Kinostream';
+                else if (adSystemLower === 'moevideo') adSystem = 'MoeVideo';
+                else if (adSystemLower === 'adplay') adSystem = 'AdPlay';
+                else if (adSystemLower === 'tds ortb' || adSystemLower === 'tds') adSystem = 'TDS ortb';
+                else if (adSystemLower === 'between' || adSystemLower === 'betweendigital') adSystem = 'BetweenDigital';
+                else if (adSystemLower === 'buzzoola') adSystem = 'Buzzoola';
+                else if (adSystemLower === 'nemedia' || adSystemLower === 'ne media') adSystem = 'Ne Media';
+                else return; 
 
                 const isMyTarget = adSystem === 'MyTarget';
                 const isYandex = adSystem === 'Yandex';
-                const isThirdParty = thirdPartyNetworks.includes(adSystem);
-
-                if (!isMyTarget && !isThirdParty && !isYandex) return;
 
                 const adUnitName = row['Ad Unit Name'] || '';
                 const lowerCaseAdUnitName = adUnitName.toLowerCase();
@@ -211,7 +210,7 @@ const handleCsvUpload = (event) => {
                 if (parts.includes('auto') || lowerCaseAdUnitName.includes('_auto_')) {
                     isAuto = true;
                     cpm = parseFloat(cpmVRaw.replace(',', '.'));
-                    currency = 'USD'; // FORCE USD for all auto rows as requested
+                    currency = 'USD'; 
                 } else {
                     const cpmPart = parts.find(p => !isNaN(parseInt(p, 10)) && !p.includes('x'));
                     if (cpmPart) {
@@ -349,20 +348,14 @@ const generateFullWaterfall = (initialRows, rate) => {
     addPlaceholderNetwork('AdLook', 80.00);
     addPlaceholderNetwork('Kinostream', 79.99); 
     addPlaceholderNetwork('MoeVideo', 79.98);
-    addPlaceholderNetwork('DaoAd', 79.97);
-    addPlaceholderNetwork('AdPlay', 79.96);
+    addPlaceholderNetwork('AdPlay', 79.97);
 
-    addPlaceholderNetwork('Adiam', 60.00);
-    addPlaceholderNetwork('VideoHead', 59.99);
-    addPlaceholderNetwork('BetweenDigital', 59.98);
+    addPlaceholderNetwork('BetweenDigital', 60.00);
 
     addPlaceholderNetwork('Buzzoola', 50.00);
-    addPlaceholderNetwork('MediaSniper', 49.99);
-    addPlaceholderNetwork('BidVol', 49.98);
+    addPlaceholderNetwork('TDS ortb', 49.99);
 
     addPlaceholderNetwork('Ne Media', 40.00);
-    addPlaceholderNetwork('Traffaret', 39.99);
-    addPlaceholderNetwork('Otclick', 39.98);
 
     const generateNetworkThresholds = (rows, isRub, networkName) => {
         const generated = [];
@@ -639,7 +632,6 @@ const hideHelpModal = () => {
     helpModal.querySelector('.modal-content').style.transform = 'scale(0.95)';
     setTimeout(() => helpModal.classList.add('hidden'), 300);
 };
-
 
 manualAddBtn.addEventListener('click', showManualInputView);
 csvUploadInput.addEventListener('change', handleCsvUpload);
