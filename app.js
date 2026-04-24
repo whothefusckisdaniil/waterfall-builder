@@ -99,7 +99,7 @@ const updateRowCount = () => {
     rowCounterEl.textContent = `${count} ${count === 1 ? 'row' : 'rows'}`;
 };
 
-const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', networkName = 'MyTarget') => {
+const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', networkName = 'MyTarget', adUnitId = '') => {
     rowIdCounter++;
     const rowId = `row-${rowIdCounter}`;
     const rowElement = document.createElement('div');
@@ -107,6 +107,7 @@ const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', netwo
     rowElement.className = 'form-row';
     
     rowElement.dataset.network = networkName;
+    rowElement.dataset.adUnitId = adUnitId;
 
     let networkOptions = `
         <option value="MyTarget" ${networkName === 'MyTarget' ? 'selected' : ''}>MyTarget</option>
@@ -201,6 +202,7 @@ const handleCsvUpload = (event) => {
                 const fillRateRaw = row['Fill Rate'] || '0';
                 const fillRateFixed = fillRateRaw.replace(',', '.');
                 const cpmVRaw = row['CPM(v) Ad system'] || '0';
+                const adUnitId = row['Ad Unit ID'] || '';
                 
                 const parts = lowerCaseAdUnitName.split('_');
                 let cpm = '';
@@ -229,7 +231,7 @@ const handleCsvUpload = (event) => {
                 const fillRate = parseFloat(fillRateFixed).toFixed(2);
                 
                 if ((cpm !== '' && !isNaN(cpm)) || isAuto) {
-                    addRow(cpm, fillRate, isAuto, currency, adSystem);
+                    addRow(cpm, fillRate, isAuto, currency, adSystem, adUnitId);
                 }
             });
             showManualInputView();
@@ -284,6 +286,7 @@ const readRows = () => {
         
         const networkSelect = rowEl.querySelector('select[name="network"]');
         const networkName = networkSelect ? networkSelect.value : 'MyTarget';
+        const adUnitId = rowEl.dataset.adUnitId || '';
 
         const cpmInput = rowEl.querySelector('input[name="cpm"]');
         const currencySelect = rowEl.querySelector('select[name="currency"]');
@@ -306,6 +309,7 @@ const readRows = () => {
         rows.push({
             id: id,
             network: networkName,
+            adUnitId: adUnitId,
             cpmValue: cpmValue,
             currency: currency,
             cpmRub: cpmRub,
@@ -349,11 +353,11 @@ const generateFullWaterfall = (initialRows, rate) => {
     addPlaceholderNetwork('Kinostream', 79.99); 
     addPlaceholderNetwork('MoeVideo', 79.98);
     addPlaceholderNetwork('AdPlay', 79.97);
+    addPlaceholderNetwork('TDS ortb', 79.96);
 
     addPlaceholderNetwork('BetweenDigital', 60.00);
 
     addPlaceholderNetwork('Buzzoola', 50.00);
-    addPlaceholderNetwork('TDS ortb', 49.99);
 
     addPlaceholderNetwork('Ne Media', 40.00);
 
@@ -475,8 +479,9 @@ const generateFullWaterfall = (initialRows, rate) => {
         ))
     );
     
-    mtAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
+    // Auto rows at the very bottom: Yandex FIRST, then MyTarget
     ydAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
+    mtAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
 
     return uniqueWaterfall;
 };
@@ -552,18 +557,31 @@ const downloadCSV = (data) => {
     const csvRows = [headers.map(escapeCsv).join(',')];
 
     data.forEach(row => {
-        let status = row.isNew ? 'new' : '';
+        let status = '';
 
-        if (row.isNew && networkInstructions[row.network]) {
-            const originalText = networkInstructions[row.network];
-            const urlMatch = originalText.match(/https?:\/\/[^\s]+/);
-            
-            if (urlMatch) {
-                const url = urlMatch[0];
-                const safeText = originalText.replace(/"/g, '""');
-                status = `=HYPERLINK("${url}"; "${safeText}")`;
+        if (row.network === 'MyTarget' || row.network === 'Yandex') {
+            if (row.isNew) {
+                status = 'new';
             } else {
-                status = originalText;
+                status = row.adUnitId || ''; // Output Ad Unit ID for existing MT/YD blocks
+            }
+        } else {
+            // Logic for 3rd party networks
+            if (row.isNew && networkInstructions[row.network]) {
+                const originalText = networkInstructions[row.network];
+                const urlMatch = originalText.match(/https?:\/\/[^\s]+/);
+                
+                if (urlMatch) {
+                    const url = urlMatch[0];
+                    const safeText = originalText.replace(/"/g, '""');
+                    status = `=HYPERLINK("${url}"; "${safeText}")`;
+                } else {
+                    status = originalText;
+                }
+            } else {
+                // If it's an existing 3rd party network, leave status empty 
+                // as requested: "если была статистика по одной из сети, то вообще ничего не выводим"
+                status = '';
             }
         }
         
