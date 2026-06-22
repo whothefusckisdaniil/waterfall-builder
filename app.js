@@ -30,8 +30,18 @@ let imageTimeout;
 
 const thirdPartyNetworks = [
     'AdLook', 'Kinostream', 'MoeVideo', 'AdPlay', 'TDS ortb', 
-    'BetweenDigital', 'Buzzoola', 'Ne Media'
+    'BetweenDigital', 'Buzzoola', 'Ne Media', 'SMI2', 'Adtec', 'Adipolo'
 ];
+
+const fallbackCpmNetworks = [
+    { name: 'SMI2', cpmUsd: 0.50 },
+    { name: 'Adtec', cpmUsd: 0.52 },
+    { name: 'Adipolo', cpmUsd: 0.50 }
+];
+
+const fallbackCpmByNetwork = Object.fromEntries(
+    fallbackCpmNetworks.map(({ name, cpmUsd }) => [name, cpmUsd])
+);
 
 const networkInstructions = {
     'AdLook': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1SKqQKxWwynNrZxdqJfecURWYv8_mFSaVtMC-FIYCeWs/edit?gid=0#gid=0 и не забудь оповестить в чате',
@@ -186,6 +196,9 @@ const handleCsvUpload = (event) => {
                 else if (adSystemLower === 'between' || adSystemLower === 'betweendigital') adSystem = 'BetweenDigital';
                 else if (adSystemLower === 'buzzoola') adSystem = 'Buzzoola';
                 else if (adSystemLower === 'nemedia' || adSystemLower === 'ne media') adSystem = 'Ne Media';
+                else if (adSystemLower === 'smi2' || adSystemLower === 'сми2') adSystem = 'SMI2';
+                else if (adSystemLower === 'adtec') adSystem = 'Adtec';
+                else if (adSystemLower === 'adipolo') adSystem = 'Adipolo';
                 else return; 
 
                 const isMyTarget = adSystem === 'MyTarget';
@@ -208,10 +221,14 @@ const handleCsvUpload = (event) => {
                 let cpm = '';
                 let isAuto = false;
                 let currency = isYandex ? 'RUB' : 'USD';
+                const parsedCpmV = parseFloat(cpmVRaw.replace(',', '.'));
 
-                if (parts.includes('auto') || lowerCaseAdUnitName.includes('_auto_')) {
+                if (fallbackCpmByNetwork[adSystem] !== undefined) {
+                    cpm = !isNaN(parsedCpmV) && parsedCpmV > 0 ? parsedCpmV : fallbackCpmByNetwork[adSystem];
+                    currency = 'USD';
+                } else if (parts.includes('auto') || lowerCaseAdUnitName.includes('_auto_')) {
                     isAuto = true;
-                    cpm = parseFloat(cpmVRaw.replace(',', '.'));
+                    cpm = parsedCpmV;
                     currency = 'USD'; 
                 } else {
                     const cpmPart = parts.find(p => !isNaN(parseInt(p, 10)) && !p.includes('x'));
@@ -222,7 +239,7 @@ const handleCsvUpload = (event) => {
                             cpm = parseInt(cpmPart, 10);
                         }
                     } else {
-                        cpm = parseFloat(cpmVRaw.replace(',', '.'));
+                        cpm = parsedCpmV;
                     }
                 }
                 
@@ -361,6 +378,22 @@ const generateFullWaterfall = (initialRows, rate) => {
 
     addPlaceholderNetwork('Ne Media', 40.00);
 
+    fallbackCpmNetworks.forEach(({ name, cpmUsd }, index) => {
+        if (!existingNetworks.has(name)) {
+            generatedThirdParty.push({
+                network: name,
+                cpmUsd: cpmUsd,
+                cpmRub: cpmUsd * rate,
+                fill: null,
+                auto: false,
+                isNew: true,
+                isPlaceholder: true,
+                statusText: 'new',
+                fallbackOrder: index
+            });
+        }
+    });
+
     const generateNetworkThresholds = (rows, isRub, networkName) => {
         const generated = [];
         const processedCpms = new Set(rows.map(r => isRub ? r.cpmRub.toFixed(2) : r.cpmUsd.toFixed(2)));
@@ -470,7 +503,19 @@ const generateFullWaterfall = (initialRows, rate) => {
         ...thirdPartyRows, ...generatedThirdParty
     ];
 
-    allRows.sort((a, b) => b.cpmUsd - a.cpmUsd);
+    const getSortCpm = (row) => {
+        if (row.fallbackOrder !== undefined) {
+            return 0.52 - (row.fallbackOrder * 0.000001);
+        }
+        return row.cpmUsd;
+    };
+
+    allRows.sort((a, b) => {
+        if (a.fallbackOrder !== undefined && b.fallbackOrder !== undefined) {
+            return a.fallbackOrder - b.fallbackOrder;
+        }
+        return getSortCpm(b) - getSortCpm(a);
+    });
 
     const uniqueWaterfall = allRows.filter((item, index, self) => 
         index === self.findIndex((t) => (
@@ -567,7 +612,9 @@ const downloadCSV = (data) => {
             }
         } else {
             // Logic for 3rd party networks
-            if (row.isNew && networkInstructions[row.network]) {
+            if (row.statusText) {
+                status = row.statusText;
+            } else if (row.isNew && networkInstructions[row.network]) {
                 const originalText = networkInstructions[row.network];
                 const urlMatch = originalText.match(/https?:\/\/[^\s]+/);
                 
