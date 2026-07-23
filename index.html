@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waterfall Builder</title>
+    <title>Waterfall Builder (MT Only)</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +20,7 @@
     <div class="container">
         <header class="main-header">
             <h1>Waterfall Builder</h1>
-            <p>Яндекс контора пидарасов</p>
+            <p>яндекс контора пидарасов.</p>
         </header>
 
         <main class="main-content">
@@ -32,10 +32,10 @@
                             <span class="row-counter" id="row-counter">0 rows</span>
                             <button class="btn btn--secondary btn--icon" id="add-row-btn" title="Add Row">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                </button>
+                            </button>
                         </div>
                     </div>
-                     <div class="card-body" id="input-choice">
+                    <div class="card-body" id="input-choice">
                         <div class="choice-body">
                             <p>Upload a CSV with "Ad system" column or add rows manually.</p>
                             <div class="choice-buttons">
@@ -88,12 +88,27 @@
             </div>
         </main>
     </div>
+    
+    <!-- Network Selection Modal -->
+    <div id="network-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Включить рекламные сети</h3>
+            <p style="font-size: 0.85rem; margin-bottom: 1rem;">Обязательные сети (MT, YD, AdLook, Kinostream, MoeVideo, AdPlay, BetweenDigital, Buzzoola) включены по умолчанию. Выберите дополнительные сети:</p>
+            <div id="optional-networks-container" class="network-checklist">
+                <!-- Checkboxes will be injected here -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn--primary" id="network-modal-confirm-btn">Продолжить</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Export Modal -->
     <div id="export-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <button class="modal-close-btn" id="export-modal-close-btn">&times;</button>
             <h3>Export Reminder</h3>
-            <p>In the exported CSV, check the Status column. If there is text - this VAST-tag is missing and must be added. If the field is empty - this tag already exists and doesn't require changes.</p>
+            <p>Remember to check other ad networks like Buzzoola, MoeVideo, Adlook, Between before inserting them into the final waterfall.</p>
             <div class="modal-actions">
                 <button class="btn btn--secondary" id="modal-cancel-btn">Cancel</button>
                 <button class="btn btn--primary" id="modal-download-btn">Download CSV</button>
@@ -101,6 +116,7 @@
         </div>
     </div>
 
+    <!-- Help Modal -->
     <div id="help-modal" class="modal-overlay hidden">
         <div class="modal-content help-content">
             <button class="modal-close-btn" id="help-modal-close-btn">&times;</button>
@@ -109,13 +125,13 @@
                 <p>Если вы хотите загрузить CSV-файл, откройте <strong>Reports → Статистика</strong> и укажите следующие параметры:</p>
                 <ul class="help-list">
                     <li>
-                        <span class="emoji">🧩</span> <strong>Фильтры:</strong> Веб-сайт/Приложение | Содержит | <code>домен_pvw_waterfall</code>
+                        <span class="emoji">🧩</span> <strong>Фильтры:</strong> Веб-сайт/Приложение - Содержит - <code>домен_pvw_waterfall</code>
                     </li>
                     <li>
-                        <span class="emoji">📊</span> <strong>Группировка:</strong> Период - выберите любой нужный диапазон (минимум неделю) | Название рекламного блока | Рекламная система | ID рекламного блока
+                        <span class="emoji">📊</span> <strong>Группировка:</strong> Период | выберите любой нужный диапазон (минимум неделю) - Название рекламного блока - Рекламная система - ID рекламного блока
                     </li>
                     <li>
-                        <span class="emoji">📈</span> <strong>Метрики:</strong> Наполняемость | CPM(v) Рекламная система
+                        <span class="emoji">📈</span> <strong>Метрики:</strong> Наполняемость - CPM(v) Рекламная система
                     </li>
                 </ul>
                 <div class="help-divider"></div>
