@@ -14,6 +14,8 @@ const rowCounterEl = document.getElementById('row-counter');
 const rateErrorEl = document.getElementById('rate-error');
 const toastNotification = document.getElementById('toast-notification');
 const imagePopup = document.getElementById('image-popup');
+
+// Modals
 const exportModal = document.getElementById('export-modal');
 const modalCloseBtn = document.getElementById('export-modal-close-btn');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -22,26 +24,37 @@ const helpBtn = document.getElementById('help-btn');
 const helpModal = document.getElementById('help-modal');
 const helpModalCloseBtn = document.getElementById('help-modal-close-btn');
 const helpModalOkBtn = document.getElementById('help-modal-ok-btn');
+const networkModal = document.getElementById('network-modal');
+const networkModalConfirmBtn = document.getElementById('network-modal-confirm-btn');
+const optionalNetworksContainer = document.getElementById('optional-networks-container');
 
 let rowIdCounter = 0;
 let currentWaterfall = [];
 let toastTimeout;
 let imageTimeout;
+let pendingCsvFile = null;
 
-const thirdPartyNetworks = [
-    'AdLook', 'Kinostream', 'MoeVideo', 'AdPlay', 'TDS ortb', 
-    'BetweenDigital', 'Buzzoola', 'Ne Media', 'SMI2', 'Adtec', 'Adipolo'
+// Mandatory networks that are always included
+const mandatoryNetworks = [
+    'MyTarget', 'Yandex', 'AdLook', 'Kinostream', 
+    'MoeVideo', 'AdPlay', 'BetweenDigital', 'Buzzoola'
 ];
 
-const fallbackCpmNetworks = [
-    { name: 'SMI2', cpmUsd: 0.50 },
-    { name: 'Adtec', cpmUsd: 0.52 },
-    { name: 'Adipolo', cpmUsd: 0.50 }
+// Optional networks user can select
+const optionalNetworksList = [
+    'TDS ortb', 'Ne Media', 'MediaSniper', 'VideoHead', 'Google', 'AdSense'
 ];
 
-const fallbackCpmByNetwork = Object.fromEntries(
-    fallbackCpmNetworks.map(({ name, cpmUsd }) => [name, cpmUsd])
-);
+// Active optional networks (set via modal)
+let activeOptionalNetworks = [...optionalNetworksList]; 
+
+// Combined dynamic list
+const getActiveThirdPartyNetworks = () => {
+    return [
+        'AdLook', 'Kinostream', 'MoeVideo', 'AdPlay', 'BetweenDigital', 'Buzzoola', 
+        ...activeOptionalNetworks
+    ];
+};
 
 const networkInstructions = {
     'AdLook': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1SKqQKxWwynNrZxdqJfecURWYv8_mFSaVtMC-FIYCeWs/edit?gid=0#gid=0 и не забудь оповестить в чате',
@@ -50,7 +63,10 @@ const networkInstructions = {
     'AdPlay': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1Xesc72asLfTi1L52FSNrIKsOhG5foU1MQogtwS1Tbm8/edit?gid=0#gid=0 и не забудь оповестить в чате',
     'BetweenDigital': 'Создать в кабинете https://cp.betweendigital.com/users/43559/sites',
     'Buzzoola': 'Создаем в кабинете https://pub.buzzoola.com/en/sites',
-    'Ne Media': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1KA0seRVZaOdgWt1lK4FBwdosZY-pf0sAP9cCxGfaywg/edit?gid=0#gid=0 и не забудь оповестить в чате, с личного кабинета получаем васт'
+    'MediaSniper': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1TEq4sx_5f_eVsMNKbINw9dsjVelcNjNNqJ8T2g3qZcY/edit?gid=1821556884#gid=1821556884 и не забудь оповестить в чате',
+    'Ne Media': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1KA0seRVZaOdgWt1lK4FBwdosZY-pf0sAP9cCxGfaywg/edit?gid=0#gid=0 и не забудь оповестить в чате, с личного кабинета получаем васт',
+    'VideoHead': 'вставить площадку в таблицу https://docs.google.com/spreadsheets/d/1H_StW94zP0XnFraR1qfTs2aPtDFO0sEKVfFho9C9PPo/edit?gid=0#gid=0 и не забудь оповестить в чате'
+    // TDS ortb, Google, AdSense have no specific links provided yet
 };
 
 const successImages = [
@@ -123,7 +139,8 @@ const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', netwo
         <option value="MyTarget" ${networkName === 'MyTarget' ? 'selected' : ''}>MyTarget</option>
         <option value="Yandex" ${networkName === 'Yandex' ? 'selected' : ''}>Yandex</option>
     `;
-    thirdPartyNetworks.forEach(net => {
+    
+    getActiveThirdPartyNetworks().forEach(net => {
         networkOptions += `<option value="${net}" ${networkName === net ? 'selected' : ''}>${net}</option>`;
     });
 
@@ -171,35 +188,40 @@ const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', netwo
     return rowElement;
 };
 
-const handleCsvUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+const parseNetworkName = (rawName) => {
+    const lower = rawName.trim().toLowerCase();
+    if (lower === 'yd' || lower === 'yandex' || lower === 'rtb') return 'Yandex';
+    if (lower === 'mt' || lower === 'mytarget') return 'MyTarget';
+    if (lower === 'adlook') return 'AdLook';
+    if (lower === 'kinostream') return 'Kinostream';
+    if (lower === 'moevideo') return 'MoeVideo';
+    if (lower === 'adplay') return 'AdPlay';
+    if (lower === 'tds ortb' || lower === 'tds') return 'TDS ortb';
+    if (lower === 'between' || lower === 'betweendigital') return 'BetweenDigital';
+    if (lower === 'buzzoola') return 'Buzzoola';
+    if (lower === 'nemedia' || lower === 'ne media') return 'Ne Media';
+    if (lower === 'mediasniper') return 'MediaSniper';
+    if (lower === 'videohead') return 'VideoHead';
+    if (lower === 'google') return 'Google';
+    if (lower === 'adsense') return 'AdSense';
+    return null;
+};
+
+const processCsvFile = (file) => {
     Papa.parse(file, {
         header: true,
         delimiter: ";", 
         skipEmptyLines: true,
         complete: (results) => {
             rowsContainer.innerHTML = '';
-            results.data.forEach(row => {
-                const adSystemRaw = row['Ad system'] || '';
-                const adSystemLower = adSystemRaw.trim().toLowerCase();
+            // Only allow networks that are mandatory or explicitly checked by the user
+            const allowedNetworks = [...mandatoryNetworks, ...activeOptionalNetworks];
 
-                let adSystem = '';
-                
-                if (adSystemLower === 'yd' || adSystemLower === 'yandex' || adSystemLower === 'rtb') adSystem = 'Yandex';
-                else if (adSystemLower === 'mt' || adSystemLower === 'mytarget') adSystem = 'MyTarget';
-                else if (adSystemLower === 'adlook') adSystem = 'AdLook';
-                else if (adSystemLower === 'kinostream') adSystem = 'Kinostream';
-                else if (adSystemLower === 'moevideo') adSystem = 'MoeVideo';
-                else if (adSystemLower === 'adplay') adSystem = 'AdPlay';
-                else if (adSystemLower === 'tds ortb' || adSystemLower === 'tds') adSystem = 'TDS ortb';
-                else if (adSystemLower === 'between' || adSystemLower === 'betweendigital') adSystem = 'BetweenDigital';
-                else if (adSystemLower === 'buzzoola') adSystem = 'Buzzoola';
-                else if (adSystemLower === 'nemedia' || adSystemLower === 'ne media') adSystem = 'Ne Media';
-                else if (adSystemLower === 'smi2' || adSystemLower === 'сми2') adSystem = 'SMI2';
-                else if (adSystemLower === 'adtec') adSystem = 'Adtec';
-                else if (adSystemLower === 'adipolo') adSystem = 'Adipolo';
-                else return; 
+            const parsedData = [];
+
+            results.data.forEach(row => {
+                const adSystem = parseNetworkName(row['Ad system'] || '');
+                if (!adSystem || !allowedNetworks.includes(adSystem)) return; 
 
                 const isMyTarget = adSystem === 'MyTarget';
                 const isYandex = adSystem === 'Yandex';
@@ -221,14 +243,10 @@ const handleCsvUpload = (event) => {
                 let cpm = '';
                 let isAuto = false;
                 let currency = isYandex ? 'RUB' : 'USD';
-                const parsedCpmV = parseFloat(cpmVRaw.replace(',', '.'));
 
-                if (fallbackCpmByNetwork[adSystem] !== undefined) {
-                    cpm = !isNaN(parsedCpmV) && parsedCpmV > 0 ? parsedCpmV : fallbackCpmByNetwork[adSystem];
-                    currency = 'USD';
-                } else if (parts.includes('auto') || lowerCaseAdUnitName.includes('_auto_')) {
+                if (parts.includes('auto') || lowerCaseAdUnitName.includes('_auto_')) {
                     isAuto = true;
-                    cpm = parsedCpmV;
+                    cpm = parseFloat(cpmVRaw.replace(',', '.'));
                     currency = 'USD'; 
                 } else {
                     const cpmPart = parts.find(p => !isNaN(parseInt(p, 10)) && !p.includes('x'));
@@ -239,18 +257,47 @@ const handleCsvUpload = (event) => {
                             cpm = parseInt(cpmPart, 10);
                         }
                     } else {
-                        cpm = parsedCpmV;
+                        cpm = parseFloat(cpmVRaw.replace(',', '.'));
                     }
                 }
                 
                 if (cpm !== '' && !isNaN(cpm)) cpm = cpm.toFixed(2);
-
                 const fillRate = parseFloat(fillRateFixed).toFixed(2);
                 
                 if ((cpm !== '' && !isNaN(cpm)) || isAuto) {
-                    addRow(cpm, fillRate, isAuto, currency, adSystem, adUnitId);
+                    parsedData.push({ cpm, fillRate, isAuto, currency, adSystem, adUnitId });
                 }
             });
+
+            // Filter logic: Only MT, YD, and Google can have multiple thresholds. 
+            // Others get only the highest CPM row.
+            const multiThresholdNetworks = ['MyTarget', 'Yandex', 'Google'];
+            const groupedData = {};
+            
+            parsedData.forEach(item => {
+                if (!groupedData[item.adSystem]) groupedData[item.adSystem] = [];
+                groupedData[item.adSystem].push(item);
+            });
+
+            const finalData = [];
+            for (const net in groupedData) {
+                if (multiThresholdNetworks.includes(net)) {
+                    finalData.push(...groupedData[net]);
+                } else {
+                    // Keep only the one with the highest CPM
+                    const highest = groupedData[net].reduce((max, curr) => {
+                        const maxCpm = parseFloat(max.cpm) || 0;
+                        const currCpm = parseFloat(curr.cpm) || 0;
+                        return currCpm > maxCpm ? curr : max;
+                    });
+                    finalData.push(highest);
+                }
+            }
+
+            finalData.forEach(item => {
+                addRow(item.cpm, item.fillRate, item.isAuto, item.currency, item.adSystem, item.adUnitId);
+            });
+
             showManualInputView();
         },
         error: (error) => {
@@ -258,8 +305,46 @@ const handleCsvUpload = (event) => {
             alert("Failed to parse CSV file. Please check the file format.");
         }
     });
-    event.target.value = null;
 };
+
+csvUploadInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    pendingCsvFile = file;
+    
+    optionalNetworksContainer.innerHTML = '';
+    optionalNetworksList.forEach(net => {
+        optionalNetworksContainer.innerHTML += `
+            <label>
+                <input type="checkbox" value="${net}" class="network-checkbox">
+                ${net}
+            </label>
+        `;
+    });
+
+    networkModal.classList.remove('hidden');
+    setTimeout(() => {
+        networkModal.style.opacity = '1';
+        networkModal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }, 10);
+
+    event.target.value = null; // reset
+});
+
+networkModalConfirmBtn.addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll('.network-checkbox');
+    activeOptionalNetworks = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+    
+    networkModal.style.opacity = '0';
+    networkModal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        networkModal.classList.add('hidden');
+        if (pendingCsvFile) {
+            processCsvFile(pendingCsvFile);
+            pendingCsvFile = null;
+        }
+    }, 300);
+});
 
 const getRate = async () => {
     rateStatus.textContent = 'Updating...';
@@ -300,7 +385,6 @@ const readRows = () => {
     const rowElements = rowsContainer.querySelectorAll('.form-row');
     rowElements.forEach(rowEl => {
         const id = rowEl.id;
-        
         const networkSelect = rowEl.querySelector('select[name="network"]');
         const networkName = networkSelect ? networkSelect.value : 'MyTarget';
         const adUnitId = rowEl.dataset.adUnitId || '';
@@ -349,11 +433,11 @@ const generateFullWaterfall = (initialRows, rate) => {
     const thirdPartyRows = initialRows.filter(r => r.network !== 'MyTarget' && r.network !== 'Yandex');
 
     const generatedThirdParty = [];
+    const isNetworkAllowed = (net) => mandatoryNetworks.includes(net) || activeOptionalNetworks.includes(net);
 
     const addPlaceholderNetwork = (name, rubThreshold) => {
-        if (!existingNetworks.has(name)) {
+        if (!existingNetworks.has(name) && isNetworkAllowed(name)) {
             const cpmUsdVirtual = (rubThreshold / rate) - 0.0001; 
-            
             generatedThirdParty.push({
                 network: name,
                 cpmUsd: cpmUsdVirtual, 
@@ -366,33 +450,23 @@ const generateFullWaterfall = (initialRows, rate) => {
         }
     };
 
+    // Define positions according to rules
     addPlaceholderNetwork('AdLook', 80.00);
     addPlaceholderNetwork('Kinostream', 79.99); 
     addPlaceholderNetwork('MoeVideo', 79.98);
     addPlaceholderNetwork('AdPlay', 79.97);
-    addPlaceholderNetwork('TDS ortb', 79.96);
 
+    addPlaceholderNetwork('Google', 71.99); // Google after 72
     addPlaceholderNetwork('BetweenDigital', 60.00);
 
     addPlaceholderNetwork('Buzzoola', 50.00);
+    addPlaceholderNetwork('VideoHead', 49.99); // VideoHead after 50
+    addPlaceholderNetwork('TDS ortb', 49.98);
 
     addPlaceholderNetwork('Ne Media', 40.00);
 
-    fallbackCpmNetworks.forEach(({ name, cpmUsd }, index) => {
-        if (!existingNetworks.has(name)) {
-            generatedThirdParty.push({
-                network: name,
-                cpmUsd: cpmUsd,
-                cpmRub: cpmUsd * rate,
-                fill: null,
-                auto: false,
-                isNew: true,
-                isPlaceholder: true,
-                statusText: 'new',
-                fallbackOrder: index
-            });
-        }
-    });
+    addPlaceholderNetwork('MediaSniper', 22.99); // MediaSniper after 23
+    addPlaceholderNetwork('AdSense', 19.99); // AdSense after 20
 
     const generateNetworkThresholds = (rows, isRub, networkName) => {
         const generated = [];
@@ -503,19 +577,7 @@ const generateFullWaterfall = (initialRows, rate) => {
         ...thirdPartyRows, ...generatedThirdParty
     ];
 
-    const getSortCpm = (row) => {
-        if (row.fallbackOrder !== undefined) {
-            return 0.52 - (row.fallbackOrder * 0.000001);
-        }
-        return row.cpmUsd;
-    };
-
-    allRows.sort((a, b) => {
-        if (a.fallbackOrder !== undefined && b.fallbackOrder !== undefined) {
-            return a.fallbackOrder - b.fallbackOrder;
-        }
-        return getSortCpm(b) - getSortCpm(a);
-    });
+    allRows.sort((a, b) => b.cpmUsd - a.cpmUsd);
 
     const uniqueWaterfall = allRows.filter((item, index, self) => 
         index === self.findIndex((t) => (
@@ -524,9 +586,26 @@ const generateFullWaterfall = (initialRows, rate) => {
         ))
     );
     
-    // Auto rows at the very bottom: Yandex FIRST, then MyTarget
     ydAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
     mtAutoRows.forEach(autoRow => uniqueWaterfall.push({...autoRow, fill: null, auto: true, isNew: false }));
+
+    const totalCount = uniqueWaterfall.length;
+    const baseSize = Math.floor(totalCount / 6);
+    let remainder = totalCount % 6;
+    let currentGroup = 1;
+    let countInCurrentGroup = 0;
+    let targetForCurrentGroup = baseSize + (remainder > 0 ? 1 : 0);
+
+    uniqueWaterfall.forEach((row) => {
+        row.group = currentGroup;
+        countInCurrentGroup++;
+        if (countInCurrentGroup >= targetForCurrentGroup && currentGroup < Math.min(6, totalCount)) {
+            currentGroup++;
+            countInCurrentGroup = 0;
+            if (remainder > 0) remainder--;
+            targetForCurrentGroup = baseSize + (remainder > 0 ? 1 : 0);
+        }
+    });
 
     return uniqueWaterfall;
 };
@@ -542,6 +621,7 @@ const renderTable = (waterfall) => {
     table.innerHTML = `
         <thead>
             <tr>
+                <th>Группировка</th>
                 <th>Ad Network</th>
                 <th>CPM (rubles)</th>
                 <th>CPM (usd)</th>
@@ -577,6 +657,7 @@ const renderTable = (waterfall) => {
         }
 
         tr.innerHTML = `
+            <td style="font-weight: 600; color: var(--text-secondary);">${row.group}</td>
             <td class="network-cell">${networkDisplay}</td>
             <td>${cpmRubDisplay}</td>
             <td>${cpmUsdDisplay}</td>
@@ -588,7 +669,7 @@ const renderTable = (waterfall) => {
 };
 
 const downloadCSV = (data) => {
-    const headers = ['Ad Network', 'CPM (rubles)', 'CPM (usd)', 'Status'];
+    const headers = ['Группировка', 'Ad Network', 'CPM (rubles)', 'CPM (usd)', 'Status'];
     
     const escapeCsv = (field) => {
         if (field === null || field === undefined) return '';
@@ -608,13 +689,10 @@ const downloadCSV = (data) => {
             if (row.isNew) {
                 status = 'new';
             } else {
-                status = row.adUnitId || ''; // Output Ad Unit ID for existing MT/YD blocks
+                status = row.adUnitId || ''; 
             }
         } else {
-            // Logic for 3rd party networks
-            if (row.statusText) {
-                status = row.statusText;
-            } else if (row.isNew && networkInstructions[row.network]) {
+            if (row.isNew && networkInstructions[row.network]) {
                 const originalText = networkInstructions[row.network];
                 const urlMatch = originalText.match(/https?:\/\/[^\s]+/);
                 
@@ -626,8 +704,6 @@ const downloadCSV = (data) => {
                     status = originalText;
                 }
             } else {
-                // If it's an existing 3rd party network, leave status empty 
-                // as requested: "если была статистика по одной из сети, то вообще ничего не выводим"
                 status = '';
             }
         }
@@ -648,6 +724,7 @@ const downloadCSV = (data) => {
         const netName = row.network === 'MyTarget' ? 'MT' : (row.network === 'Yandex' ? 'YD' : row.network);
 
         const values = [
+            row.group,
             netName,
             cpmRubValue,
             cpmUsdValue,
@@ -699,8 +776,8 @@ const hideHelpModal = () => {
 };
 
 manualAddBtn.addEventListener('click', showManualInputView);
-csvUploadInput.addEventListener('change', handleCsvUpload);
 addRowBtn.addEventListener('click', () => addRow());
+
 buildWaterfallBtn.addEventListener('click', () => {
     const initialRows = readRows();
     if (!initialRows) return;
@@ -714,6 +791,7 @@ buildWaterfallBtn.addEventListener('click', () => {
     renderTable(waterfall);
     showToast("Now you have the best waterfall!");
 });
+
 exportCsvBtn.addEventListener('click', () => {
     if (currentWaterfall.length === 0) {
         showToast("Please build a waterfall first.", "error");
@@ -721,6 +799,7 @@ exportCsvBtn.addEventListener('click', () => {
     }
     showModal();
 });
+
 refreshRateBtn.addEventListener('click', getRate);
 modalCloseBtn.addEventListener('click', hideModal);
 modalCancelBtn.addEventListener('click', hideModal);
