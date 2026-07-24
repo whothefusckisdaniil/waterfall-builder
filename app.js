@@ -190,43 +190,51 @@ const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', netwo
 
 const parseNetworkName = (rawName) => {
     const lower = rawName.trim().toLowerCase();
-    if (lower === 'yd' || lower === 'yandex' || lower === 'rtb') return 'Yandex';
-    if (lower === 'mt' || lower === 'mytarget') return 'MyTarget';
-    if (lower === 'adlook') return 'AdLook';
-    if (lower === 'kinostream') return 'Kinostream';
-    if (lower === 'moevideo') return 'MoeVideo';
-    if (lower === 'adplay') return 'AdPlay';
-    if (lower === 'tds ortb' || lower === 'tds') return 'TDS ortb';
-    if (lower === 'between' || lower === 'betweendigital') return 'BetweenDigital';
-    if (lower === 'buzzoola') return 'Buzzoola';
-    if (lower === 'nemedia' || lower === 'ne media') return 'Ne Media';
-    if (lower === 'mediasniper') return 'MediaSniper';
-    if (lower === 'videohead') return 'VideoHead';
-    if (lower === 'google') return 'Google';
-    if (lower === 'adsense') return 'AdSense';
+    if (lower.includes('yd') || lower.includes('yandex') || lower.includes('rtb')) return 'Yandex';
+    if (lower.includes('mt') || lower.includes('mytarget')) return 'MyTarget';
+    if (lower.includes('adlook')) return 'AdLook';
+    if (lower.includes('kinostream')) return 'Kinostream';
+    if (lower.includes('moevideo') || lower.includes('moe video')) return 'MoeVideo';
+    if (lower.includes('adplay')) return 'AdPlay';
+    if (lower.includes('tds') || lower.includes('ortb')) return 'TDS ortb';
+    if (lower.includes('between')) return 'BetweenDigital';
+    if (lower.includes('buzzoola') || lower.includes('buzoola')) return 'Buzzoola';
+    if (lower.includes('nemedia') || lower.includes('ne media')) return 'Ne Media';
+    if (lower.includes('mediasniper') || lower.includes('media sniper')) return 'MediaSniper';
+    if (lower.includes('videohead') || lower.includes('video head')) return 'VideoHead';
+    if (lower.includes('google')) return 'Google';
+    if (lower.includes('adsense')) return 'AdSense';
     return null;
 };
 
 const processCsvFile = (file) => {
     Papa.parse(file, {
         header: true,
-        delimiter: ";", 
         skipEmptyLines: true,
         complete: (results) => {
             rowsContainer.innerHTML = '';
             // Only allow networks that are mandatory or explicitly checked by the user
             const allowedNetworks = [...mandatoryNetworks, ...activeOptionalNetworks];
 
+            const getCol = (row, names) => {
+                for (const name of names) {
+                    if (row[name] !== undefined) return String(row[name]);
+                }
+                return '';
+            };
+
             const parsedData = [];
 
             results.data.forEach(row => {
-                const adSystem = parseNetworkName(row['Ad system'] || '');
+                const adSystemRaw = getCol(row, ['Ad system', 'Рекламная система', 'Ad System']);
+                const adSystem = parseNetworkName(adSystemRaw);
+                
                 if (!adSystem || !allowedNetworks.includes(adSystem)) return; 
 
                 const isMyTarget = adSystem === 'MyTarget';
                 const isYandex = adSystem === 'Yandex';
 
-                const adUnitName = row['Ad Unit Name'] || '';
+                const adUnitName = getCol(row, ['Ad Unit Name', 'Название рекламного блока']);
                 const lowerCaseAdUnitName = adUnitName.toLowerCase();
                 const sizePattern = /\d+x\d+/;
                 
@@ -234,10 +242,10 @@ const processCsvFile = (file) => {
                     return;
                 }
 
-                const fillRateRaw = row['Fill Rate'] || '0';
+                const fillRateRaw = getCol(row, ['Fill Rate', 'Наполняемость']) || '0';
                 const fillRateFixed = fillRateRaw.replace(',', '.');
-                const cpmVRaw = row['CPM(v) Ad system'] || '0';
-                const adUnitId = row['Ad Unit ID'] || '';
+                const cpmVRaw = getCol(row, ['CPM(v) Ad system', 'CPM(v)', 'CPM', 'CPM(v) Рекламная система']) || '0';
+                const adUnitId = getCol(row, ['Ad Unit ID', 'ID рекламного блока']) || '';
                 
                 const parts = lowerCaseAdUnitName.split('_');
                 let cpm = '';
@@ -249,19 +257,22 @@ const processCsvFile = (file) => {
                     cpm = parseFloat(cpmVRaw.replace(',', '.'));
                     currency = 'USD'; 
                 } else {
-                    const cpmPart = parts.find(p => !isNaN(parseInt(p, 10)) && !p.includes('x'));
-                    if (cpmPart) {
-                        if (isMyTarget) {
-                            cpm = parseInt(cpmPart, 10) / 100;
+                    if (isMyTarget || isYandex) {
+                        // FIX: Ищем часть, которая состоит строго только из цифр (^\d+$)
+                        // Это исключит ложные срабатывания вроде "47news.ru", где есть буквы
+                        const cpmPart = parts.find(p => /^\d+$/.test(p));
+                        
+                        if (cpmPart) {
+                            cpm = isMyTarget ? parseInt(cpmPart, 10) / 100 : parseInt(cpmPart, 10);
                         } else {
-                            cpm = parseInt(cpmPart, 10);
+                            cpm = parseFloat(cpmVRaw.replace(',', '.'));
                         }
                     } else {
                         cpm = parseFloat(cpmVRaw.replace(',', '.'));
                     }
                 }
                 
-                if (cpm !== '' && !isNaN(cpm)) cpm = cpm.toFixed(2);
+                if (cpm !== '' && !isNaN(cpm)) cpm = Number(cpm).toFixed(2);
                 const fillRate = parseFloat(fillRateFixed).toFixed(2);
                 
                 if ((cpm !== '' && !isNaN(cpm)) || isAuto) {
@@ -269,8 +280,6 @@ const processCsvFile = (file) => {
                 }
             });
 
-            // Filter logic: Only MT, YD, and Google can have multiple thresholds. 
-            // Others get only the highest CPM row.
             const multiThresholdNetworks = ['MyTarget', 'Yandex', 'Google'];
             const groupedData = {};
             
@@ -284,7 +293,6 @@ const processCsvFile = (file) => {
                 if (multiThresholdNetworks.includes(net)) {
                     finalData.push(...groupedData[net]);
                 } else {
-                    // Keep only the one with the highest CPM
                     const highest = groupedData[net].reduce((max, curr) => {
                         const maxCpm = parseFloat(max.cpm) || 0;
                         const currCpm = parseFloat(curr.cpm) || 0;
@@ -450,23 +458,22 @@ const generateFullWaterfall = (initialRows, rate) => {
         }
     };
 
-    // Define positions according to rules
     addPlaceholderNetwork('AdLook', 80.00);
     addPlaceholderNetwork('Kinostream', 79.99); 
     addPlaceholderNetwork('MoeVideo', 79.98);
     addPlaceholderNetwork('AdPlay', 79.97);
 
-    addPlaceholderNetwork('Google', 71.99); // Google after 72
+    addPlaceholderNetwork('Google', 71.99); 
     addPlaceholderNetwork('BetweenDigital', 60.00);
 
     addPlaceholderNetwork('Buzzoola', 50.00);
-    addPlaceholderNetwork('VideoHead', 49.99); // VideoHead after 50
+    addPlaceholderNetwork('VideoHead', 49.99); 
     addPlaceholderNetwork('TDS ortb', 49.98);
 
     addPlaceholderNetwork('Ne Media', 40.00);
 
-    addPlaceholderNetwork('MediaSniper', 22.99); // MediaSniper after 23
-    addPlaceholderNetwork('AdSense', 19.99); // AdSense after 20
+    addPlaceholderNetwork('MediaSniper', 22.99); 
+    addPlaceholderNetwork('AdSense', 19.99); 
 
     const generateNetworkThresholds = (rows, isRub, networkName) => {
         const generated = [];
@@ -649,9 +656,6 @@ const renderTable = (waterfall) => {
         if (row.isPlaceholder) {
             cpmRubDisplay = '—';
             cpmUsdDisplay = '—';
-        } else if (row.auto) {
-            cpmRubDisplay = 'auto';
-            cpmUsdDisplay = 'auto';
         } else if (row.network === 'Yandex') {
             cpmUsdDisplay = '—';
         }
@@ -714,9 +718,6 @@ const downloadCSV = (data) => {
         if (row.isPlaceholder) {
             cpmRubValue = '-';
             cpmUsdValue = '-';
-        } else if (row.auto) {
-            cpmRubValue = 'auto';
-            cpmUsdValue = 'auto';
         } else if (row.network === 'Yandex') {
             cpmUsdValue = '';
         }
