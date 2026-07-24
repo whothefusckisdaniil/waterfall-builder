@@ -190,13 +190,18 @@ const addRow = (cpm = '', fillRate = '', isAuto = false, currency = 'USD', netwo
 
 const parseNetworkName = (rawName) => {
     const lower = rawName.trim().toLowerCase();
-    if (lower.includes('yd') || lower.includes('yandex') || lower.includes('rtb')) return 'Yandex';
-    if (lower.includes('mt') || lower.includes('mytarget')) return 'MyTarget';
+    
+    // Сначала проверяем TDS, чтобы 'ortb' не попало в 'rtb' Яндекса
+    if (lower.includes('tds') || lower.includes('ortb')) return 'TDS ortb';
+    
+    // Короткие аббревиатуры проверяем строго (===), чтобы не захватить куски других слов
+    if (lower === 'yd' || lower.includes('yandex') || lower === 'rtb') return 'Yandex';
+    if (lower === 'mt' || lower.includes('mytarget')) return 'MyTarget';
+    
     if (lower.includes('adlook')) return 'AdLook';
     if (lower.includes('kinostream')) return 'Kinostream';
     if (lower.includes('moevideo') || lower.includes('moe video')) return 'MoeVideo';
     if (lower.includes('adplay')) return 'AdPlay';
-    if (lower.includes('tds') || lower.includes('ortb')) return 'TDS ortb';
     if (lower.includes('between')) return 'BetweenDigital';
     if (lower.includes('buzzoola') || lower.includes('buzoola')) return 'Buzzoola';
     if (lower.includes('nemedia') || lower.includes('ne media')) return 'Ne Media';
